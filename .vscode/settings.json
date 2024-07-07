@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "undefined/subscriptions/81dfe8fc-d0cb-46fd-9112-9d0663b2dba8/resourceGroups/flaskservertest/providers/Microsoft.Web/sites/fileveri-flask",
+    "appService.deploySubpath": "."
+}

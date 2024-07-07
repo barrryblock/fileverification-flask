@@ -1,0 +1,9 @@
+2024-07-07 01:51:09,153 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-07-07 01:51:09,154 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2024-07-07 01:53:51,950 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-07-07 01:53:51,951 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2024-07-07 01:54:48,192 - werkzeug - INFO - 127.0.0.1 - - [07/Jul/2024 01:54:48] "GET / HTTP/1.1" 200 -
+2024-07-07 01:55:13,682 - werkzeug - ERROR - 127.0.0.1 - - [07/Jul/2024 01:55:13] code 400, message Bad request version ('\x86ìá©º×ú\x89;oò¨R\x98')
+2024-07-07 01:55:13,682 - werkzeug - INFO - 127.0.0.1 - - [07/Jul/2024 01:55:13] "[35m[1m\x16\x03\x01\x02z\x01\x00\x02v\x03\x03,fõÈ\x11\x1d#\x8f²4\x83¶ªFr\x9c'\x1d¼\x1anF[*\x91Åûs¨\x80hø \x86ìá©º×ú\x89;oò¨R\x98[0m" HTTPStatus.BAD_REQUEST -
