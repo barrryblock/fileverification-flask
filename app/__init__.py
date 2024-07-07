@@ -18,8 +18,8 @@ import ssl
 app = Flask(__name__)
 registered_devices = {'1234','2345'}
 
-UPLOAD_FOLDER = "uploaded_files"
-LOG_FILE = "api.log"
+UPLOAD_FOLDER = "/home/site/wwwroot/uploaded_files"
+LOG_FILE = "/home/site/wwwroot/api.log"
 ALLOWED_EXTENSIONS = { 'pdf', 'png', 'jpg', 'jpeg','doc', 'docs'}
 
 def allowed_file(filename):
