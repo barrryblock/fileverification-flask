@@ -2,7 +2,6 @@ azure-common==1.1.28
 azure-core==1.30.2
 azure-cosmos==4.7.0
 azure-nspkg==3.0.2
-azure-storage==0.36.0
 azure-storage-blob==12.20.0
 blinker==1.8.2
 certifi==2024.7.4
