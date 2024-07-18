@@ -3,7 +3,8 @@ from pymongo import MongoClient, errors
 from azure.storage.blob import BlobServiceClient
 from flask import Flask, abort, jsonify, request, redirect, flash, render_template
 import os
-
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 app = Flask(__name__)
 
@@ -99,6 +100,27 @@ def get_files_json():
 
     return jsonify(files)
 
+# Replace with your client ID
+CLIENT_ID = "112966719495849603935.apps.googleusercontent.com"
+
+@app.route('/verify', methods=['POST'])
+def verify_integrity_token():
+    token = request.json.get('token')
+
+    if not token:
+        return jsonify({'error': 'Token is missing'}), 400
+
+    try:
+        # Verify the integrity token
+        id_info = id_token.verify_oauth2_token(token, requests.Request(), CLIENT_ID)
+
+        # The token is valid, proceed with your logic
+        return jsonify({'status': 'success', 'data': id_info}), 200
+
+    except ValueError as e:
+        # Invalid token
+        return jsonify({'error': 'Invalid token', 'message': str(e)}), 400
+    
 #flask endpoint to upload a photo
 @app.route("/upload-files", methods=["POST"])
 def upload_files():
