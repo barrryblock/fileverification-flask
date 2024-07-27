@@ -5,6 +5,10 @@ from flask import Flask, abort, jsonify, request, redirect, flash, render_templa
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+import base64
 
 app = Flask(__name__)
 
@@ -102,6 +106,79 @@ def get_files_json():
 
 # Replace with your client ID
 CLIENT_ID = "112966719495849603935.apps.googleusercontent.com"
+
+def verify_signature(public_key_str, data, signature):
+    public_key = load_pem_public_key(base64.b64decode(public_key_str.encode()))
+    try:
+        public_key.verify(
+            base64.b64decode(signature.encode()),
+            data,
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+        return True
+    except Exception as e:
+        print(f"Signature verification failed: {e}")
+        return False
+
+@app.route('/api/challenge', methods=['GET'])
+def get_challenge():
+    challenge = os.urandom(32).hex()
+    return jsonify({'challenge': challenge})
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    # Check if the request contains a file and signed data
+    if 'file' not in request.files or 'signed_data' not in request.form:
+        return jsonify({"error": "No file or signed data provided"}), 400
+    
+    signed_challenge = request.form['signed_challenge']
+    public_key = request.form['public_key']
+    encrypted_file_content = request.files['encrypted_file_content'].read()
+    signed_encrypted_content = request.form['signed_encrypted_content']
+    challenge = request.form['challenge']
+    file = request.files['file']
+
+    if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
+            return jsonify({"message": "Invalid signed challenge"}), 400
+
+        # Verify the signed encrypted file content
+    if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
+            return jsonify({"message": "Invalid signed encrypted file content"}), 400
+
+    # Store the encrypted file in Azure Blob Storage
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob='encrypted_file.txt')
+    blob_client.upload_blob(encrypted_file_content, overwrite=True)
+    
+    # Prepare the metadata to store in Mongo DB
+    file_metadata = {
+            "id": file.filename,
+            "signed_data": signed_encrypted_content,
+            "blob_url": blob_client.url
+    }
+        
+    db = mongo_client["FileMatadata"]
+    collection = db["Metadata"]
+    try:
+        collection.insert_one(file_metadata)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"message": "Challenge and file verified and stored successfully"}), 200
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    #     return jsonify({"message": "An error occurred"}), 500
+    # # Verify the signed challenge
+    # try:
+    #     public_key.verify(
+    #         base64.b64decode(signed_challenge.encode()),
+    #         challenge.encode(),
+    #         padding.PKCS1v15(),
+    #         hashes.SHA256()
+    #     )
+    #     # Save the file to Azure Blob Storage
+    #     blob_client = container_client.get_blob_client(file.filename)
+    #     blob_client.upload_blob(file, overwrite=True)
 
 @app.route('/verify', methods=['POST'])
 def verify_integrity_token():
