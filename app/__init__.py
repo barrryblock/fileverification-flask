@@ -130,13 +130,13 @@ def get_challenge():
 def upload_file():
     # Check if the request contains a file and signed data
     try:
-        if 'signed_challenge' not in request.form or 'public_key' not in request.form or 'encrypted_file_content' not in request.files or 'signed_encrypted_content' not in request.form or 'challenge' not in request.form:
+        if 'signed_challenge' not in request.form or 'public_key' not in request.form or 'encrypted_file_content' not in request.form or 'signed_encrypted_content' not in request.form or 'challenge' not in request.form:
                 return jsonify({"error": "Missing required fields or files"}), 400
 
         
         signed_challenge = request.form['signed_challenge']
         public_key = request.form['public_key']
-        encrypted_file_content = request.files['encrypted_file_content'].read()
+        encrypted_file_content = request.form['encrypted_file_content']
         signed_encrypted_content = request.form['signed_encrypted_content']
         challenge = request.form['challenge']
         # file = request.files['file']
@@ -154,7 +154,7 @@ def upload_file():
         
         # Prepare the metadata to store in Mongo DB
         file_metadata = {
-                "id": encrypted_file_content.filename,
+                "encrypted_content": encrypted_file_content,
                 "signed_data": signed_encrypted_content,
                 "blob_url": blob_client.url
         }
