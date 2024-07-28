@@ -131,7 +131,7 @@ def upload_file():
     # Check if the request contains a file and signed data
     try:
         if 'signed_challenge' not in request.form or 'public_key' not in request.form or 'encrypted_file_content' not in request.form or 'signed_encrypted_content' not in request.form or 'challenge' not in request.form:
-            return jsonify({"error": "Missing required fields or files "+ str(request.form)}), 400
+            return jsonify({"error": "Missing required fields or files "+ str(request.form.to_dict())}), 400
 
         
         signed_challenge = request.form['signed_challenge']
