@@ -129,45 +129,47 @@ def get_challenge():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     # Check if the request contains a file and signed data
-    # if 'file' not in request.files or 'signed_challenge' not in request.form:
-    #     return jsonify({"error": "No file or signed data provided"}), 400
-    
-    signed_challenge = request.form['signed_challenge']
-    public_key = request.form['public_key']
-    encrypted_file_content = request.files['encrypted_file_content'].read()
-    signed_encrypted_content = request.form['signed_encrypted_content']
-    challenge = request.form['challenge']
-    # file = request.files['file']
-
-    if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
-            return jsonify({"message": "Invalid signed challenge"}), 400
-
-        # Verify the signed encrypted file content
-    if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
-            return jsonify({"message": "Invalid signed encrypted file content"}), 400
-
-    # Store the encrypted file in Azure Blob Storage
-    blob_client = blob_service_client.get_blob_client(container=container_name, blob='encrypted_file.txt')
-    blob_client.upload_blob(encrypted_file_content, overwrite=True)
-    
-    # Prepare the metadata to store in Mongo DB
-    file_metadata = {
-            "id": encrypted_file_content.filename,
-            "signed_data": signed_encrypted_content,
-            "blob_url": blob_client.url
-    }
-        
-    db = mongo_client["FileMatadata"]
-    collection = db["Metadata"]
     try:
-        collection.insert_one(file_metadata)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        if 'signed_challenge' not in request.form or 'public_key' not in request.form or 'encrypted_file_content' not in request.files or 'signed_encrypted_content' not in request.form or 'challenge' not in request.form:
+                return jsonify({"error": "Missing required fields or files"}), 400
 
-    return jsonify({"message": "Challenge and file verified and stored successfully"}), 200
-    # except Exception as e:
-    #     print(f"Error: {e}")
-    #     return jsonify({"message": "An error occurred"}), 500
+        
+        signed_challenge = request.form['signed_challenge']
+        public_key = request.form['public_key']
+        encrypted_file_content = request.files['encrypted_file_content'].read()
+        signed_encrypted_content = request.form['signed_encrypted_content']
+        challenge = request.form['challenge']
+        # file = request.files['file']
+
+        if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
+                return jsonify({"message": "Invalid signed challenge"}), 400
+
+            # Verify the signed encrypted file content
+        if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
+                return jsonify({"message": "Invalid signed encrypted file content"}), 400
+
+        # Store the encrypted file in Azure Blob Storage
+        blob_client = blob_service_client.get_blob_client(container=container_name, blob='encrypted_file.txt')
+        blob_client.upload_blob(encrypted_file_content, overwrite=True)
+        
+        # Prepare the metadata to store in Mongo DB
+        file_metadata = {
+                "id": encrypted_file_content.filename,
+                "signed_data": signed_encrypted_content,
+                "blob_url": blob_client.url
+        }
+            
+        db = mongo_client["FileMatadata"]
+        collection = db["Metadata"]
+        try:
+            collection.insert_one(file_metadata)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+        return jsonify({"message": "Challenge and file verified and stored successfully"}), 200
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"An error occured::": str(e)}), 500
     # # Verify the signed challenge
     # try:
     #     public_key.verify(
