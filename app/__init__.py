@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 import base64
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -18,6 +19,11 @@ container_name = "uploaded-files" # container name in which images will be store
 mongo_uri = os.getenv('AZURE_COSMOS_MONGO_URI')
 database_name = 'DeviceDatabase'
 collection_name = 'devices'
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 if not connect_str:
     raise ValueError("AZURE_STORAGE_CONNECTION_STRING environment variable is not set.")
@@ -135,10 +141,10 @@ def upload_file():
             missing_fields.append('signed_challenge')
         if 'public_key' not in request.form:
             missing_fields.append('public_key')
-        if 'encrypted_file_content' not in request.form:
-            missing_fields.append('encrypted_file_content')
-        if 'signed_encrypted_content' not in request.form:
-            missing_fields.append('signed_encrypted_content')
+        # if 'encrypted_file_content' not in request.form:
+        #     missing_fields.append('encrypted_file_content')
+        # if 'signed_encrypted_content' not in request.form:
+        #     missing_fields.append('signed_encrypted_content')
         if 'challenge' not in request.form:
             missing_fields.append('challenge')
         if missing_fields:
@@ -151,38 +157,64 @@ def upload_file():
         
         signed_challenge = request.form['signed_challenge']
         public_key = request.form['public_key']
-        encrypted_file_content = request.form['encrypted_file_content']
-        signed_encrypted_content = request.form['signed_encrypted_content']
+        # encrypted_file_content = request.form['encrypted_file_content']
+        # signed_encrypted_content = request.form['signed_encrypted_content']
         challenge = request.form['challenge']
         # file = request.files['file']
         print(f"Public key: {public_key}")
-        
+
         if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
                 return jsonify({"message": "Invalid signed challenge"}), 400
 
             # Verify the signed encrypted file content
-        if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
-                return jsonify({"message": "Invalid signed encrypted file content"}), 400
+        # if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
+        #         return jsonify({"message": "Invalid signed encrypted file content"}), 400
 
-        # Store the encrypted file in Azure Blob Storage
-        blob_client = blob_service_client.get_blob_client(container=container_name, blob='encrypted_file.txt')
-        blob_client.upload_blob(encrypted_file_content, overwrite=True)
         
-        # Prepare the metadata to store in Mongo DB
-        file_metadata = {
-                "encrypted_content": encrypted_file_content,
-                "signed_data": signed_encrypted_content,
-                "blob_url": blob_client.url
-        }
-            
-        db = mongo_client["FileMatadata"]
-        collection = db["Metadata"]
-        try:
-            collection.insert_one(file_metadata)
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        files = request.files.getlist('file')
 
-        return jsonify({"message": "Challenge and file verified and stored successfully"}), 200
+        if not signed_challenge or not files:
+            return jsonify({'error': 'Missing signed challenge or files'}), 400
+
+        uploaded_files = []
+
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                try:
+                    blob_client = blob_service_client.get_blob_client(container=container_name, blob=filename)
+                    blob_client.upload_blob(file, overwrite=True)
+                    uploaded_files.append(filename)
+                    # Prepare the metadata to store in Mongo DB
+                    file_metadata = {
+                            "file": filename,
+                            "signed_challenge": signed_challenge,
+                            "challenge": challenge,
+                            "blob_url": blob_client.url
+                    }
+                        
+                    db = mongo_client["FileMatadata"]
+                    collection = db["Metadata"]
+                    try:
+                        collection.insert_one(file_metadata)
+                    except Exception as e:
+                        return jsonify({"error": str(e)}), 500
+                except Exception as e:
+                    print(f"Error uploading {filename}: {str(e)}")
+
+                    return jsonify({'error': f'Failed to upload file {filename} to Azure Blob Storage'}), 500
+            else:
+                return jsonify({'error': 'Invalid file type. Only image files are allowed.'}), 400
+
+        
+
+        # # Store the encrypted file in Azure Blob Storage
+        # blob_client = blob_service_client.get_blob_client(container=container_name, blob='encrypted_file.txt')
+        # blob_client.upload_blob(encrypted_file_content, overwrite=True)
+        
+        
+
+        return jsonify({"message": "Challenge verified and file stored successfully"}), 200
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"An error occured::": str(e)}), 500
