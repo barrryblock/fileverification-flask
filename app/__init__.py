@@ -129,15 +129,15 @@ def get_challenge():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     # Check if the request contains a file and signed data
-    if 'file' not in request.files or 'signed_data' not in request.form:
-        return jsonify({"error": "No file or signed data provided"}), 400
+    # if 'file' not in request.files or 'signed_challenge' not in request.form:
+    #     return jsonify({"error": "No file or signed data provided"}), 400
     
     signed_challenge = request.form['signed_challenge']
     public_key = request.form['public_key']
     encrypted_file_content = request.files['encrypted_file_content'].read()
     signed_encrypted_content = request.form['signed_encrypted_content']
     challenge = request.form['challenge']
-    file = request.files['file']
+    # file = request.files['file']
 
     if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
             return jsonify({"message": "Invalid signed challenge"}), 400
@@ -152,7 +152,7 @@ def upload_file():
     
     # Prepare the metadata to store in Mongo DB
     file_metadata = {
-            "id": file.filename,
+            "id": encrypted_file_content.filename,
             "signed_data": signed_encrypted_content,
             "blob_url": blob_client.url
     }
