@@ -113,11 +113,14 @@ def get_files_json():
 # Replace with your client ID
 CLIENT_ID = "112966719495849603935.apps.googleusercontent.com"
 
+def add_padding(base64_string):
+    return base64_string + '=' * (-len(base64_string) % 4)
+
 def verify_signature(public_key_str, data, signature):
-    public_key = load_pem_public_key(base64.b64decode(public_key_str.encode()))
     try:
+        public_key = load_pem_public_key(base64.b64decode(add_padding(public_key_str)))
         public_key.verify(
-            base64.b64decode(signature.encode()),
+            base64.b64decode(add_padding(signature)),
             data,
             padding.PKCS1v15(),
             hashes.SHA256()
@@ -163,8 +166,8 @@ def upload_file():
         # file = request.files['file']
         print(f"Public key: {public_key}")
 
-        # if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
-        #         return jsonify({"message": "Invalid signed challenge"}), 400
+        if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
+                return jsonify({"message": "Invalid signed challenge"}), 400
 
             # Verify the signed encrypted file content
         # if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
