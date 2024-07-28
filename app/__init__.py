@@ -135,7 +135,7 @@ def upload_file():
             missing_fields.append('signed_challenge')
         if 'public_key' not in request.form:
             missing_fields.append('public_key')
-        if 'encrypted_file_content' not in request.files:
+        if 'encrypted_file_content' not in request.form:
             missing_fields.append('encrypted_file_content')
         if 'signed_encrypted_content' not in request.form:
             missing_fields.append('signed_encrypted_content')
