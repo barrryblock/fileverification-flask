@@ -59,17 +59,17 @@ def validate_device():
 # Endpoint to register a device
 @app.route("/register-device", methods=["POST"])
 def register_device():
-    device_id = request.json.get('deviceId')
+    device_id = request.json.get('deviceid')
     device_token = request.json.get('deviceToken')
     
 
     if not device_id or not device_token:
         abort(400, 'Device ID and token are required.')
 
-    if device_collection.find_one({'deviceId': device_id}):
+    if device_collection.find_one({'deviceid': device_id}):
         abort(409, 'Device already registered.')
 
-    device_collection.insert_one({'deviceId': device_id, 'deviceToken': device_token, 'attested': False})
+    device_collection.insert_one({'deviceid': device_id, 'deviceToken': device_token, 'attested': False})
 
     return jsonify({'message': 'Device registered successfully.'}), 201
 
@@ -83,9 +83,9 @@ def attest_device():
     if not device_id or not device_token:
         abort(400, 'Device ID and token are required.')
 
-    device = device_collection.find_one({'deviceId': device_id})
+    device = device_collection.find_one({'deviceid': device_id})
     if device and device['deviceToken'] == device_token:
-        device_collection.update_one({'deviceId': device_id}, {'$set': {'attested': True},'publicKey': public_key})
+        device_collection.update_one({'deviceid': device_id}, {'$set': {'attested': True},'publicKey': public_key})
         return jsonify({'message': 'Device attested successfully.'}), 200
     else:
         abort(403, 'Invalid device token or device not registered.')
