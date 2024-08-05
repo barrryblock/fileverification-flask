@@ -79,6 +79,8 @@ def attest_device():
     device_id = request.headers.get('deviceid')
     device_token = request.headers.get('deviceToken')
     data = request.get_json()
+    if not data or 'public_key' not in data:
+        abort(400, 'Public key is required.')
     public_key = data['public_key']
     #public_key = request.json.get('public_key')
 
@@ -87,7 +89,10 @@ def attest_device():
 
     device = device_collection.find_one({'deviceid': device_id})
     if device and device['deviceToken'] == device_token:
-        device_collection.update_one({'deviceid': device_id}, {'$set': {'attested': True},'publicKey': public_key})
+        device_collection.update_one(
+            {'deviceid': device_id},
+            {'$set': {'attested': True, 'publicKey': public_key}}
+        )
         return jsonify({'message': 'Device attested successfully.'}), 200
     else:
         abort(403, 'Invalid device token or device not registered.')
