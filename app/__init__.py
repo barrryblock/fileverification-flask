@@ -78,7 +78,9 @@ def register_device():
 def attest_device():
     device_id = request.headers.get('deviceid')
     device_token = request.headers.get('deviceToken')
-    public_key = request.json.get('public_key')
+    data = request.get_json()
+    public_key = data['public_key']
+    #public_key = request.json.get('public_key')
 
     if not device_id or not device_token:
         abort(400, 'Device ID and token are required.')
