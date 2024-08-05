@@ -61,6 +61,7 @@ def validate_device():
 def register_device():
     device_id = request.json.get('deviceId')
     device_token = request.json.get('deviceToken')
+    
 
     if not device_id or not device_token:
         abort(400, 'Device ID and token are required.')
@@ -75,15 +76,16 @@ def register_device():
 # Endpoint to attest a device
 @app.route("/attest-device", methods=["POST"])
 def attest_device():
-    device_id = request.json.get('deviceId')
-    device_token = request.json.get('deviceToken')
+    device_id = request.headers.get('deviceid')
+    device_token = request.headers.get('deviceToken')
+    public_key = request.json.get('public_key')
 
     if not device_id or not device_token:
         abort(400, 'Device ID and token are required.')
 
     device = device_collection.find_one({'deviceId': device_id})
     if device and device['deviceToken'] == device_token:
-        device_collection.update_one({'deviceId': device_id}, {'$set': {'attested': True}})
+        device_collection.update_one({'deviceId': device_id}, {'$set': {'attested': True},'publicKey': public_key})
         return jsonify({'message': 'Device attested successfully.'}), 200
     else:
         abort(403, 'Invalid device token or device not registered.')
