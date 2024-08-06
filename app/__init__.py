@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 import base64
+import json
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -122,11 +123,20 @@ def get_files_json():
 # Replace with your client ID
 CLIENT_ID = "112966719495849603935.apps.googleusercontent.com"
 
-def add_padding(base64_string):
-    return base64_string + '=' * (-len(base64_string) % 4)
+def add_padding(public_key_str):
+    # Ensure the public key string is properly padded
+    return public_key_str.replace("-----BEGIN PUBLIC KEY-----", "-----BEGIN PUBLIC KEY-----\n").replace("-----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----\n")
 
 def verify_signature(public_key_str, data, signature):
+    device_id = request.headers.get('deviceid')
+    device_token = request.headers.get('deviceToken')
+    
     try:
+        device = device_collection.find_one({'deviceid': device_id})
+        if device and device['deviceToken'] == device_token:
+            public_key_str = device.get('publicKey')
+        if not public_key_str:
+            abort(403, 'Public key not found for device.')
         public_key = load_pem_public_key(base64.b64decode(add_padding(public_key_str)))
         public_key.verify(
             base64.b64decode(signature),
