@@ -138,6 +138,9 @@ def verify_signature(public_key_str, data, signature):
         device = device_collection.find_one({'deviceid': device_id})
         if device and device['deviceToken'] == device_token:
             public_key_str = device.get('publicKey')
+            logger.info(f"Public Key: {public_key_str}")
+            logger.info(f"data: {data}")
+            logger.info(f"signature: {signature}")
         if not public_key_str:
             abort(403, 'Public key not found for device.')
         public_key = load_pem_public_key(base64.b64decode(add_padding(public_key_str)))
