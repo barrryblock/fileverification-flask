@@ -11,9 +11,12 @@ from cryptography.hazmat.primitives import hashes
 import base64
 import json
 from werkzeug.utils import secure_filename
+import logging
 
 app = Flask(__name__)
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING') # retrieve the connection string from the environment variable
 container_name = "uploaded-files" # container name in which images will be store in the storage account
@@ -36,7 +39,7 @@ try:
     container_client = blob_service_client.get_container_client(container=container_name) # get container client to interact with the container in which images will be stored
     container_client.get_container_properties() # get properties of the container to force exception to be thrown if container does not exist
 except Exception as e:
-    print(e)
+    logger.error(f"Error: {e}")
     print("Creating container...")
     container_client = blob_service_client.create_container(container_name) # create a container in the storage account if it does not exist
 
@@ -130,7 +133,7 @@ def add_padding(public_key_str):
 def verify_signature(public_key_str, data, signature):
     device_id = request.headers.get('deviceid')
     device_token = request.headers.get('deviceToken')
-    
+
     try:
         device = device_collection.find_one({'deviceid': device_id})
         if device and device['deviceToken'] == device_token:
@@ -146,6 +149,8 @@ def verify_signature(public_key_str, data, signature):
         )
         return True
     except Exception as e:
+        logger.error(f"Signature verification failed: {e}")
+
         print(f"Signature verification failed: {e}")
         return False
 
@@ -174,6 +179,7 @@ def upload_file():
                 'form': request.form.to_dict()
             }
             error_message = f"Missing required fields or files: {missing_fields}. Received params: {received_params}"
+            logger.error(f"Missing required fields or files: {missing_fields}. Received params: {received_params}")
             return jsonify({"error": error_message}), 400
 
         
@@ -220,6 +226,7 @@ def upload_file():
                     try:
                         collection.insert_one(file_metadata)
                     except Exception as e:
+                        logger.error(f"Error: {e}")
                         return jsonify({"error": str(e)}), 500
                 except Exception as e:
                     print(f"Error uploading {filename}: {str(e)}")
@@ -239,6 +246,7 @@ def upload_file():
         return jsonify({"message": "Challenge verified and file stored successfully"}), 200
     except Exception as e:
         print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         return jsonify({"An error occured::": str(e)}), 500
     # # Verify the signed challenge
     # try:
@@ -268,6 +276,7 @@ def verify_integrity_token():
 
     except ValueError as e:
         # Invalid token
+        logger.error(f"Error: {e}")
         return jsonify({'error': 'Invalid token', 'message': str(e)}), 400
     
 #flask endpoint to upload a photo
@@ -281,6 +290,7 @@ def upload_files():
             filenames += file.filename + "<br /> "
         except Exception as e:
             print(e)
+            logger.error(f"Error: {e}")
             print("Ignoring duplicate filenames") # ignore duplicate filenames
         
     return redirect('/') 
