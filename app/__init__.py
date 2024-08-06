@@ -134,6 +134,7 @@ def verify_signature(public_key_str, data, signature):
     device_id = request.headers.get('deviceid')
     device_token = request.headers.get('deviceToken')
 
+
     try:
         device = device_collection.find_one({'deviceid': device_id})
         if device and device['deviceToken'] == device_token:
@@ -141,6 +142,9 @@ def verify_signature(public_key_str, data, signature):
             logger.info(f"Public Key: {public_key_str}")
             logger.info(f"data: {data}")
             logger.info(f"signature: {signature}")
+            print(f"Public Key: {public_key_str}")
+            print(f"data: {data}")
+            print(f"signature: {signature}")
         if not public_key_str:
             abort(403, 'Public key not found for device.')
         public_key = load_pem_public_key(base64.b64decode(add_padding(public_key_str)))
@@ -192,7 +196,7 @@ def upload_file():
         # signed_encrypted_content = request.form['signed_encrypted_content']
         challenge = request.form['challenge']
         # file = request.files['file']
-        print(f"Public key: {public_key}")
+        print(f"Public key from API: {public_key}")
 
         if not verify_signature(public_key, base64.b64decode(challenge.encode()), signed_challenge):
                 return jsonify({"message": "Invalid signed challenge"}), 400
