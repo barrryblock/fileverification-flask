@@ -293,20 +293,51 @@ def verify_integrity_token():
 #flask endpoint to upload a photo
 @app.route("/upload-files", methods=["POST"])
 def upload_files():
-    #filenames = ""
+    uploaded_files=[]    
     file_name = request.form.get("file_name")
     file_extension = request.form.get("file_extension")
+    challenge = request.form.get("challenge")
+    signed_challenge = request.form.get("signed_challenge")
 
     result_filename = file_name.split('.')[0] if '.' in file_name else file_name
+
     for file in request.files.getlist("uploaded-files"):
-        try:
-            full_file_name = f"{result_filename}.{file_extension}"
-            container_client.upload_blob(full_file_name, file) # upload the file to the container using the filename as the blob name
-            #filenames += file.filename + "<br /> "
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                try:
+                    blob_client = blob_service_client.get_blob_client(container=container_name, blob=filename)
+                    blob_client.upload_blob(file, overwrite=True)
+                    uploaded_files.append(filename)
+                    # Prepare the metadata to store in Mongo DB
+                    file_metadata = {
+                            "file": filename,
+                            "signed_challenge": signed_challenge,
+                            "challenge": challenge,
+                            "blob_url": blob_client.url
+                    }
+                        
+                    db = mongo_client["FileMatadata"]
+                    collection = db["Metadata"]
+                    try:
+                        collection.insert_one(file_metadata)
+                    except Exception as e:
+                        logger.error(f"Error: {e}")
+                        return jsonify({"error": str(e)}), 500
+                except Exception as e:
+                    print(f"Error uploading {filename}: {str(e)}")
+
+                    return jsonify({'error': f'Failed to upload file {filename} to Azure Blob Storage'}), 500
+            else:
+                return jsonify({'error': 'Invalid file type. Only image files are allowed.'}), 400
+    # for file in request.files.getlist("uploaded-files"):
+    #     try:
+    #         full_file_name = f"{result_filename}.{file_extension}"
+    #         container_client.upload_blob(full_file_name, file) # upload the file to the container using the filename as the blob name
+    #         #filenames += file.filename + "<br /> "
             
-        except Exception as e:
-            print(e)
-            logger.error(f"Error: {e}")
+    #     except Exception as e:
+    #         print(e)
+    #         logger.error(f"Error: {e}")
         
     return jsonify({'Success': 'File Uploaded Successfully', 'Filename' : str(result_filename)}), 400 
 
