@@ -294,11 +294,14 @@ def verify_integrity_token():
 @app.route("/upload-files", methods=["POST"])
 def upload_files():
     filenames = ""
-
+    file_name = request.form.get("file_name")
+    file_extension = request.form.get("file_extension")
     for file in request.files.getlist("uploaded-files"):
         try:
-            container_client.upload_blob(file.filename, file) # upload the file to the container using the filename as the blob name
+            full_file_name = f"{file_name}.{file_extension}"
+            container_client.upload_blob(full_file_name, file) # upload the file to the container using the filename as the blob name
             filenames += file.filename + "<br /> "
+            
         except Exception as e:
             print(e)
             logger.error(f"Error: {e}")
