@@ -293,21 +293,22 @@ def verify_integrity_token():
 #flask endpoint to upload a photo
 @app.route("/upload-files", methods=["POST"])
 def upload_files():
-    filenames = ""
+    #filenames = ""
     file_name = request.form.get("file_name")
     file_extension = request.form.get("file_extension")
+
+    result_filename = file_name.split('.')[0] if '.' in file_name else file_name
     for file in request.files.getlist("uploaded-files"):
         try:
-            full_file_name = f"{file_name}.{file_extension}"
+            full_file_name = f"{result_filename}.{file_extension}"
             container_client.upload_blob(full_file_name, file) # upload the file to the container using the filename as the blob name
-            filenames += file.filename + "<br /> "
+            #filenames += file.filename + "<br /> "
             
         except Exception as e:
             print(e)
             logger.error(f"Error: {e}")
-            print("Ignoring duplicate filenames") # ignore duplicate filenames
         
-    return jsonify({'Success': 'File Uploaded Successfully', 'Filename' : str(filenames)}), 400 
+    return jsonify({'Success': 'File Uploaded Successfully', 'Filename' : str(result_filename)}), 400 
 
 if __name__ == "__main__":
     app.run(debug=True,host='0.0.0.0', port=5000)
