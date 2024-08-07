@@ -301,7 +301,7 @@ def upload_files():
     if not file_name or not file_extension or not challenge or not signed_challenge:
         return jsonify({'error': 'Missing required fields'}), 400
 
-    if not verify_signature("public_key", challenge, signed_challenge):
+    if not verify_signature("p-key", challenge, signed_challenge):
         return jsonify({"message": "Invalid signed challenge"}), 400
     #result_filename = file_name.split('.')[0] if '.' in file_name else file_name
 
