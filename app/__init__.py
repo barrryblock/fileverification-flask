@@ -147,9 +147,9 @@ def verify_signature(public_key_str, data, signature):
             print(f"signature: {signature}")
         if not public_key_str:
             abort(403, 'Public key not found for device.')
-        public_key = load_pem_public_key(add_padding(public_key_str))
+        public_key = load_pem_public_key(base64.b64decode(add_padding(public_key_str)))
         public_key.verify(
-            signature,
+            base64.b64decode(signature),
             data,
             padding.PKCS1v15(),
             hashes.SHA256()
@@ -198,7 +198,7 @@ def upload_file():
         # file = request.files['file']
         print(f"Public key from API: {public_key}")
 
-        if not verify_signature(public_key, challenge, signed_challenge):
+        if not verify_signature(public_key, challenge.encode(), signed_challenge):
                 return jsonify({"message": "Invalid signed challenge"}), 400
 
             # Verify the signed encrypted file content
