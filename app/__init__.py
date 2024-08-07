@@ -304,7 +304,7 @@ def upload_files():
             logger.error(f"Error: {e}")
             print("Ignoring duplicate filenames") # ignore duplicate filenames
         
-    return redirect('/') 
+    return jsonify({'Success': 'File Uploaded Successfully', 'Filename' : str(filenames)}), 400 
 
 if __name__ == "__main__":
     app.run(debug=True,host='0.0.0.0', port=5000)
