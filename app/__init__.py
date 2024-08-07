@@ -151,7 +151,7 @@ def verify_signature(public_key_str, data, signature):
             print(f"decoded signature: {decoded_signature}")
         if not public_key_str:
             abort(403, 'Public key not found for device.')
-        public_key = load_pem_public_key((add_padding(public_key_str.encode('utf-8'))))
+        public_key = load_pem_public_key(public_key_str.encode('utf-8'))
         public_key.verify(
             base64.b64decode(signature),
             base64.b64decode(data),
