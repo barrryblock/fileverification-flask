@@ -212,8 +212,8 @@ def upload_file():
         
         files = request.files.getlist('file')
 
-        if not signed_challenge or not files:
-            return jsonify({'error': 'Missing signed challenge or files'}), 400
+        # if not signed_challenge or not files:
+        #     return jsonify({'error': 'Missing signed challenge or files'}), 400
 
         uploaded_files = []
 
