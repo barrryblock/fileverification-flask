@@ -290,7 +290,7 @@ def verify_integrity_token():
         logger.error(f"Error: {e}")
         return jsonify({'error': 'Invalid token', 'message': str(e)}), 400
     
-#flask endpoint to upload a photo
+@app.route('/api/upload-file', methods=['POST'])
 def upload_files():
     uploaded_files = []    
     file_name = request.form.get("file_name")
