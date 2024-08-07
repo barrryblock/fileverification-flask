@@ -198,7 +198,7 @@ def upload_file():
         # file = request.files['file']
         print(f"Public key from API: {public_key}")
 
-        if not verify_signature(public_key, challenge.encode(), signed_challenge):
+        if not verify_signature(public_key, challenge, signed_challenge):
                 return jsonify({"message": "Invalid signed challenge"}), 400
 
             # Verify the signed encrypted file content
