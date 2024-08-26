@@ -19,13 +19,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING') # retrieve the connection string from the environment variable
-container_name = "uploaded-files" # container name in which images will be store in the storage account
-mongo_uri = os.getenv('AZURE_COSMOS_MONGO_URI')
+container_name = "uploaded-files" # container name in which images/files will be store in the storage account
+mongo_uri = os.getenv('AZURE_COSMOS_MONGO_URI') #database where the signed data is to be stored
 database_name = 'DeviceDatabase'
-collection_name = 'devices'
+collection_name = 'devices' # Collection where the device data is stored
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
+# Function to check if the file extension is allowed (Can be modified to allow other file types)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -47,6 +48,7 @@ mongo_client = MongoClient(mongo_uri)
 database = mongo_client[database_name]
 device_collection = database[collection_name]
 
+# Function to validate the device before processing the request everytime
 @app.before_request
 def validate_device():
     if request.path.startswith('/api') or request.path.startswith('/upload-photos') or request.path == '/':
@@ -101,10 +103,12 @@ def attest_device():
     else:
         abort(403, 'Invalid device token or device not registered.')
 
+# Default Endpoint
 @app.route('/')
 def index():
     return render_template("index.html")
 
+# Endpoint to get all the files stored in the container
 @app.route("/api/files", methods=["GET"])
 def get_files_json():
     blob_items = container_client.list_blobs()  # list all the blobs in the container
@@ -123,35 +127,25 @@ def get_files_json():
 
     return jsonify(files)
 
-# Replace with your client ID
-CLIENT_ID = "112966719495849603935.apps.googleusercontent.com"
-
+# Function to add padding to the public key string
 def add_padding(public_key_str):
     # Ensure the public key string is properly padded
     return public_key_str.replace("-----BEGIN PUBLIC KEY-----", "-----BEGIN PUBLIC KEY-----\n").replace("-----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----\n")
 
+# Function to verify the signature of the data
 def verify_signature(public_key_str, data, signature):
     device_id = request.headers.get('deviceid')
     device_token = request.headers.get('deviceToken')
-
-
     try:
         device = device_collection.find_one({'deviceid': device_id})
         if device and device['deviceToken'] == device_token:
             public_key_str = device.get('publicKey')
-            logger.info(f"Public Key: {public_key_str}")
-            logger.info(f"data: {data}")
-            logger.info(f"signature: {signature}")
-            print(f"Public Key: {public_key_str}")
-            print(f"data: {data}")
-            print(f"signature: {signature}")
             decoded_data = base64.b64decode(data)
             decoded_signature = base64.b64decode(signature)
-            print(f"decoded data: {decoded_data}")
-            print(f"decoded signature: {decoded_signature}")
         if not public_key_str:
             abort(403, 'Public key not found for device.')
         public_key = load_pem_public_key(public_key_str.encode('utf-8'))
+        #verify the signature with the public key
         public_key.verify(
             base64.b64decode(signature),
             base64.b64decode(data),
@@ -161,15 +155,16 @@ def verify_signature(public_key_str, data, signature):
         return True
     except Exception as e:
         logger.error(f"Signature verification failed: {e}")
-
         print(f"Signature verification failed: {e}")
         return False
 
+# Endpoint to get the challenge (nonce) for the device
 @app.route('/api/challenge', methods=['GET'])
 def get_challenge():
     challenge = os.urandom(32).hex()
     return jsonify({'challenge': challenge})
 
+# Endpoint to upload a file to the storage account
 @app.route('/upload', methods=['POST'])
 def upload_file():
     # Check if the request contains a file and signed data
@@ -179,10 +174,6 @@ def upload_file():
             missing_fields.append('signed_challenge')
         if 'public_key' not in request.form:
             missing_fields.append('public_key')
-        # if 'encrypted_file_content' not in request.form:
-        #     missing_fields.append('encrypted_file_content')
-        # if 'signed_encrypted_content' not in request.form:
-        #     missing_fields.append('signed_encrypted_content')
         if 'challenge' not in request.form:
             missing_fields.append('challenge')
         if missing_fields:
@@ -196,24 +187,12 @@ def upload_file():
         
         signed_challenge = request.form['signed_challenge']
         public_key = request.form['public_key']
-        # encrypted_file_content = request.form['encrypted_file_content']
-        # signed_encrypted_content = request.form['signed_encrypted_content']
         challenge = request.form['challenge']
-        # file = request.files['file']
-        print(f"Public key from API: {public_key}")
 
         if not verify_signature(public_key, challenge, signed_challenge):
                 return jsonify({"message": "Invalid signed challenge"}), 400
 
-            # Verify the signed encrypted file content
-        # if not verify_signature(public_key, encrypted_file_content, signed_encrypted_content):
-        #         return jsonify({"message": "Invalid signed encrypted file content"}), 400
-
-        
         files = request.files.getlist('file')
-
-        # if not signed_challenge or not files:
-        #     return jsonify({'error': 'Missing signed challenge or files'}), 400
 
         uploaded_files = []
 
@@ -224,7 +203,7 @@ def upload_file():
                     blob_client = blob_service_client.get_blob_client(container=container_name, blob=filename)
                     blob_client.upload_blob(file, overwrite=True)
                     uploaded_files.append(filename)
-                    # Prepare the metadata to store in Mongo DB
+                    # Prepare the metadata,signature and challenge to store in Mongo DB
                     file_metadata = {
                             "file": filename,
                             "signed_challenge": signed_challenge,
@@ -246,31 +225,14 @@ def upload_file():
             else:
                 return jsonify({'error': 'Invalid file type. Only image files are allowed.'}), 400
 
-        
-
-        # # Store the encrypted file in Azure Blob Storage
-        # blob_client = blob_service_client.get_blob_client(container=container_name, blob='encrypted_file.txt')
-        # blob_client.upload_blob(encrypted_file_content, overwrite=True)
-        
-        
-
         return jsonify({"message": "Challenge verified and file stored successfully"}), 200
     except Exception as e:
         print(f"Error: {e}")
         logger.error(f"Error: {e}")
         return jsonify({"An error occured::": str(e)}), 500
-    # # Verify the signed challenge
-    # try:
-    #     public_key.verify(
-    #         base64.b64decode(signed_challenge.encode()),
-    #         challenge.encode(),
-    #         padding.PKCS1v15(),
-    #         hashes.SHA256()
-    #     )
-    #     # Save the file to Azure Blob Storage
-    #     blob_client = container_client.get_blob_client(file.filename)
-    #     blob_client.upload_blob(file, overwrite=True)
 
+
+# Endpoint to verify the integrity token with Google Play Integrity API
 @app.route('/verify', methods=['POST'])
 def verify_integrity_token():
     token = request.json.get('token')
@@ -280,7 +242,7 @@ def verify_integrity_token():
 
     try:
         # Verify the integrity token
-        id_info = id_token.verify_oauth2_token(token, requests.Request(), CLIENT_ID)
+        id_info = id_token.verify_oauth2_token(token, requests.Request(), 'CLIENT_ID')
 
         # The token is valid, proceed with your logic
         return jsonify({'status': 'success', 'data': id_info}), 200
@@ -289,7 +251,8 @@ def verify_integrity_token():
         # Invalid token
         logger.error(f"Error: {e}")
         return jsonify({'error': 'Invalid token', 'message': str(e)}), 400
-    
+
+# Endpoint to upload a file to the storage account with the signed challenge after verifying the challenge   
 @app.route('/api/upload-file', methods=['POST'])
 def upload_files():
     uploaded_files = []    
@@ -303,7 +266,6 @@ def upload_files():
 
     if not verify_signature("p-key", challenge, signed_challenge):
         return jsonify({"message": "Invalid signed challenge"}), 400
-    #result_filename = file_name.split('.')[0] if '.' in file_name else file_name
 
     for file in request.files.getlist("uploaded-files"):
         if file and allowed_file(file.filename):
